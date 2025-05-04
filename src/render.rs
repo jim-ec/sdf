@@ -249,7 +249,7 @@ impl Renderer {
             &[],
         );
         pass.set_pipeline(&self.pipeline);
-        pass.draw(0..6, 0..1);
+        pass.draw(0..3, 0..1);
         drop(pass);
 
         self.queue.submit(Some(encoder.finish()));
