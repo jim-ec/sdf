@@ -1,8 +1,7 @@
 use std::ops::Mul;
-use std::time::Instant;
 
-use cgmath::{Quaternion, Rad, Rotation3};
 use eframe::egui_wgpu::{self, wgpu};
+use glam::Quat;
 
 use crate::camera::Camera;
 
@@ -74,7 +73,7 @@ impl Viewport {
             .renderer
             .write()
             .callback_resources
-            .insert(RenderResources { pipeline, format });
+            .insert(RenderResources { pipeline });
 
         Some(Self::default())
     }
@@ -153,8 +152,8 @@ impl egui_wgpu::CallbackTrait for RenderCallback {
             wgpu::ShaderStages::FRAGMENT,
             0,
             as_byte_slice(&[Uniforms {
-                rotation: Quaternion::from_angle_y(Rad(self.camera.yaw))
-                    .mul(Quaternion::from_angle_x(Rad(self.camera.pitch)))
+                rotation: Quat::from_rotation_y(self.camera.yaw)
+                    .mul(Quat::from_rotation_x(self.camera.pitch))
                     .into(),
                 eye: [0.0, 0.0, -self.camera.radius],
                 viewport_aspect_ratio: info.viewport.aspect_ratio(),
@@ -169,7 +168,6 @@ impl egui_wgpu::CallbackTrait for RenderCallback {
 
 struct RenderResources {
     pipeline: wgpu::RenderPipeline,
-    format: wgpu::TextureFormat,
 }
 
 #[allow(unused)]

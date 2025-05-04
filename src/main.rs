@@ -1,8 +1,3 @@
-#![allow(unused)]
-
-// TODO: Replace with glam
-use cgmath::{Vector3, Zero, vec3};
-
 mod camera;
 mod viewport;
 

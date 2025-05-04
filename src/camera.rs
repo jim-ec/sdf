@@ -1,4 +1,4 @@
-use cgmath::{Matrix4, Quaternion, Rotation3, Vector3};
+use glam::{Mat4, Quat, Vec3};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Camera {
@@ -9,11 +9,11 @@ pub struct Camera {
 
 impl Camera {
     #[allow(unused)]
-    pub fn matrix(&self) -> Matrix4<f32> {
-        let yaw = Quaternion::from_angle_y(cgmath::Rad(self.yaw));
-        let pitch = Quaternion::from_angle_x(cgmath::Rad(self.pitch));
-        let translation = Matrix4::from_translation(Vector3::new(0.0, 0.0, -self.radius));
-        translation * Matrix4::from(pitch * yaw)
+    pub fn matrix(&self) -> Mat4 {
+        let yaw = Quat::from_rotation_y(self.yaw);
+        let pitch = Quat::from_rotation_x(self.pitch);
+        let translation = Mat4::from_translation(Vec3::new(0.0, 0.0, -self.radius));
+        translation * Mat4::from_quat(pitch * yaw)
     }
 
     /// Interpolate between this camera and another camera in a frame-rate independent way.
@@ -23,15 +23,6 @@ impl Camera {
         self.yaw += interpolant * (other.yaw - self.yaw);
         self.pitch += interpolant * (other.pitch - self.pitch);
         self.radius += interpolant * (other.radius - self.radius);
-    }
-
-    #[allow(unused)]
-    pub fn position(&self) -> Vector3<f32> {
-        let yaw = Quaternion::from_angle_y(cgmath::Rad(self.yaw));
-        let pitch = Quaternion::from_angle_x(cgmath::Rad(self.pitch));
-        let rotation = pitch * yaw;
-        let translation = Vector3::new(0.0, 0.0, -self.radius);
-        rotation * translation
     }
 }
 
