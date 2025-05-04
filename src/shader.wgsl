@@ -1,13 +1,14 @@
 struct Uniforms {
-    rotation: vec4<f32>,
+    rotation: quat,
     eye: vec3<f32>,
     viewport_aspect_ratio: f32,
-    max_iterations: u32,
-    min_step_size: f32,
     time: f32,
 }
 
-var<push_constant> uniforms: Uniforms;
+override min_step_size: f32 = 0.001;
+override max_iterations: u32 = 64;
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -30,19 +31,19 @@ fn vertex(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    let focal_length = 1.0;
+    let focal_length = 2.0;
     let pixel = vec2(uniforms.viewport_aspect_ratio, 1.0) * in.uv;
     let direction = quat_transform(uniforms.rotation, normalize(vec3(pixel, focal_length)));
     var point = quat_transform(uniforms.rotation, uniforms.eye);
 
     var i = 0u;
     loop {
-        if (i >= uniforms.max_iterations) {
+        if (i >= max_iterations) {
             discard;
         }
 
         let dist = sdf(point);
-        if (dist < uniforms.min_step_size) {
+        if (dist < min_step_size) {
             break;
         }
         point += dist * direction;
@@ -51,11 +52,11 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     let n = sdf_normal(point);
-    // let color = vec3(0.9) * dot(direction, -n) + 0.1;
+    let color = vec3(0.9) * dot(direction, -n) + 0.1;
     // let color = vec3(f32(i)) / f32(uniforms.max_iterations);
     // return vec4(color, 1.0);
-    return vec4(0.5 * n + 0.5, 1.0);
-    // return vec4(linear_to_gamma_rgb(color), 1.0);
+    // return vec4(0.5 * n + 0.5, 1.0);
+    return vec4(linear_to_gamma_rgb(color), 1.0);
 }
 
 fn linear_to_gamma_rgb(color: vec3<f32>) -> vec3<f32> {

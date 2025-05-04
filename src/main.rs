@@ -1,65 +1,86 @@
 mod camera;
-mod viewport;
+mod render;
 
-fn main() -> eframe::Result {
-    eframe::run_native(
-        env!("CARGO_PKG_NAME"),
-        eframe::NativeOptions {
-            persist_window: true,
-            viewport: egui::ViewportBuilder::default(),
-            wgpu_options: egui_wgpu::WgpuConfiguration {
-                wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
-                    power_preference: egui_wgpu::wgpu::PowerPreference::HighPerformance,
-                    device_descriptor: std::sync::Arc::new(|adapter| {
-                        egui_wgpu::wgpu::DeviceDescriptor {
-                            required_features: egui_wgpu::wgpu::Features::PUSH_CONSTANTS,
-                            required_limits: egui_wgpu::wgpu::Limits {
-                                max_push_constant_size: adapter.limits().max_push_constant_size,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        }
-                    }),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
+use std::{cell::OnceCell, sync::Arc, time::Instant};
 
-            ..Default::default()
-        },
-        Box::new(|cc| Ok(Box::new(MyApp::new(cc)))),
-    )
+use camera::Camera;
+use render::Renderer;
+use winit::{
+    application::ApplicationHandler,
+    event::{MouseScrollDelta, WindowEvent},
+    event_loop::{ActiveEventLoop, EventLoop},
+    platform::macos::WindowAttributesExtMacOS,
+    window::{Window, WindowId},
+};
+
+#[derive(Default)]
+struct App {
+    window: OnceCell<Arc<Window>>,
+    renderer: OnceCell<Renderer>,
+    camera_smoothed: Camera,
+    camera: Camera,
+    last_render_time: Option<Instant>,
 }
 
-struct MyApp {
-    viewport: viewport::Viewport,
-}
-
-impl MyApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        println!(
-            "GPU: {}",
-            cc.wgpu_render_state
-                .as_ref()
-                .unwrap()
-                .adapter
-                .get_info()
-                .name
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let window = Arc::new(
+            event_loop
+                .create_window(
+                    Window::default_attributes()
+                        .with_title(env!("CARGO_PKG_NAME"))
+                        .with_fullsize_content_view(true)
+                        .with_titlebar_transparent(true)
+                        .with_movable_by_window_background(true),
+                )
+                .unwrap(),
         );
+        self.window.set(window.clone()).unwrap();
 
-        Self {
-            viewport: viewport::Viewport::new(cc).unwrap(),
+        let renderer = Renderer::new(window);
+        self.renderer
+            .set(futures::executor::block_on(renderer))
+            .unwrap();
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        match event {
+            WindowEvent::Resized(size) => {
+                self.renderer.get_mut().unwrap().resize(size);
+                self.window.get().unwrap().request_redraw();
+            }
+            WindowEvent::RedrawRequested => {
+                let dt = match self.last_render_time {
+                    None => 0.0,
+                    Some(t) => (Instant::now() - t).as_secs_f32(),
+                };
+                self.last_render_time = Some(Instant::now());
+                self.camera_smoothed.lerp_exp(&self.camera, 0.9, dt);
+
+                let renderer = self.renderer.get_mut().unwrap();
+                renderer.render(&self.camera_smoothed);
+                self.window.get().unwrap().request_redraw();
+            }
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
+            WindowEvent::MouseWheel {
+                delta: MouseScrollDelta::PixelDelta(delta),
+                ..
+            } => {
+                self.camera.yaw += 0.01 * delta.x as f32;
+                self.camera.pitch += 0.01 * delta.y as f32;
+            }
+            WindowEvent::PinchGesture { delta, .. } => {
+                self.camera.radius /= 1.0 + delta as f32;
+            }
+            _ => {}
         }
     }
 }
 
-impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        egui::CentralPanel::default()
-            .frame(egui::Frame::default().fill(ctx.style().visuals.panel_fill))
-            .show(&ctx, |ui| {
-                self.viewport.ui(ui);
-            });
-        ctx.request_repaint();
-    }
+fn main() {
+    let event_loop = EventLoop::new().unwrap();
+    let mut app = App::default();
+    event_loop.run_app(&mut app).unwrap();
 }
