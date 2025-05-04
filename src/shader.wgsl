@@ -17,10 +17,10 @@ struct VertexOutput {
 @vertex
 fn vertex(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     // Compute the normalized quad coordinates based on the vertex index.
-    // #: 0 1 2 3 4 5
-    // x: 1 1 0 0 0 1
-    // y: 1 0 0 0 1 1
-    let uv = vec2<u32>((vec2(1u, 2u) + vertex_index) % vec2(6u) < vec2(3u));
+    // #: 0 1 2
+    // x: 0 1 0
+    // y: 0 0 1
+    let uv = (vec2(vertex_index) & vec2(1u, 2u)) << vec2(1u, 0u);
 
     var out: VertexOutput;
     out.position = vec4(vec2<f32>(uv << vec2(1u)) - 1.0, 0.0, 1.0);
