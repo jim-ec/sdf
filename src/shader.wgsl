@@ -1,13 +1,14 @@
 struct Uniforms {
-    rotation: vec4<f32>,
+    rotation: quat,
     eye: vec3<f32>,
     viewport_aspect_ratio: f32,
-    max_iterations: u32,
-    min_step_size: f32,
     time: f32,
 }
 
-var<push_constant> uniforms: Uniforms;
+override min_step_size: f32 = 0.001;
+override max_iterations: u32 = 64;
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -37,12 +38,12 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
     var i = 0u;
     loop {
-        if (i >= uniforms.max_iterations) {
+        if (i >= max_iterations) {
             discard;
         }
 
         let dist = sdf(point);
-        if (dist < uniforms.min_step_size) {
+        if (dist < min_step_size) {
             break;
         }
         point += dist * direction;
