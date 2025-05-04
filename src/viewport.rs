@@ -1,4 +1,4 @@
-use std::ops::Mul;
+use std::{ops::Mul, time::Instant};
 
 use eframe::egui_wgpu::{self, wgpu};
 use glam::Quat;
@@ -73,7 +73,10 @@ impl Viewport {
             .renderer
             .write()
             .callback_resources
-            .insert(RenderResources { pipeline });
+            .insert(RenderResources {
+                pipeline,
+                t0: Instant::now(),
+            });
 
         Some(Self::default())
     }
@@ -113,6 +116,7 @@ pub struct Uniforms {
     viewport_aspect_ratio: f32,
     max_iterations: u32,
     min_step_size: f32,
+    time: f32,
 }
 
 // Callbacks in egui_wgpu have 3 stages:
@@ -159,6 +163,7 @@ impl egui_wgpu::CallbackTrait for RenderCallback {
                 viewport_aspect_ratio: info.viewport.aspect_ratio(),
                 max_iterations: 64,
                 min_step_size: 0.001,
+                time: resources.t0.elapsed().as_secs_f32(),
             }]),
         );
         // TODO: Render fullscreen triangle instead of a quad
@@ -168,6 +173,7 @@ impl egui_wgpu::CallbackTrait for RenderCallback {
 
 struct RenderResources {
     pipeline: wgpu::RenderPipeline,
+    t0: Instant,
 }
 
 #[allow(unused)]

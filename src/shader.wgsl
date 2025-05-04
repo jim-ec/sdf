@@ -4,6 +4,7 @@ struct Uniforms {
     viewport_aspect_ratio: f32,
     max_iterations: u32,
     min_step_size: f32,
+    time: f32,
 }
 
 var<push_constant> uniforms: Uniforms;
@@ -62,8 +63,9 @@ fn linear_to_gamma_rgb(color: vec3<f32>) -> vec3<f32> {
 }
 
 fn sdf(point: vec3<f32>) -> f32 {
-    // return sdf_sphere(point, vec3(0.0), 1.0);
-    return sdf_cuboid(point, vec3(0.0), vec3(0.5)) - 0.2;
+    let d_c = sdf_cuboid(modulo(point, vec3(2.0, 0.0, 2.0)), vec3(0.0), vec3(0.5));
+    let d_s = sdf_sphere(point, vec3(0.0, 0.0, 0.0), 4.0 * abs(sin(0.5 * uniforms.time)));
+    return sdf_smooth_min(d_c, d_s, 1.0);
 }
 
 fn sdf_sphere(point: vec3<f32>, center: vec3<f32>, radius: f32) -> f32 {

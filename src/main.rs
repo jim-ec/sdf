@@ -60,5 +60,6 @@ impl eframe::App for MyApp {
             .show(&ctx, |ui| {
                 self.viewport.ui(ui);
             });
+        ctx.request_repaint();
     }
 }

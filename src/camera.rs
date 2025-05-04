@@ -31,7 +31,7 @@ impl Default for Camera {
         Camera {
             yaw: 1.0,
             pitch: 0.5,
-            radius: 4.0,
+            radius: 8.0,
         }
     }
 }
