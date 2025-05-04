@@ -75,12 +75,9 @@ fn sdf_sphere(point: vec3<f32>, center: vec3<f32>, radius: f32) -> f32 {
 
 fn sdf_cuboid(point: vec3<f32>, center: vec3<f32>, half_extent: vec3<f32>) -> f32 {
     let offset: vec3<f32> = abs(point - center) - half_extent;
-    // dst from point outside box to edge (0 if inside box)
-    let unsignedDst: f32 = length(max(offset, vec3(0.0)));
-    // -dst from point inside box to edge (0 if outside box)
-    let tmp: vec3<f32> = min(offset, vec3(0.0));
-    let dstInsideBox: f32 = max(max(tmp.x, tmp.y), tmp.z);
-    return unsignedDst + dstInsideBox;
+    let dst_outside: f32 = length(max(offset, vec3(0.0)));
+    let dst_inside: f32 = inf_norm(min(offset, vec3(0.0)));
+    return dst_outside + dst_inside;
 }
 
 fn modulo(p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
@@ -160,23 +157,4 @@ fn sq(x: f32) -> f32 {
 
 fn inf_norm(v: vec3<f32>) -> f32 {
     return max(max(v.x, v.y), v.z);
-}
-
-fn select_mat(f: mat3x3<f32>, t: mat3x3<f32>, cond: vec3<bool>) -> mat3x3<f32> {
-    let x = select(f[0], t[0], cond[0]);
-    let y = select(f[1], t[1], cond[1]);
-    let z = select(f[2], t[2], cond[2]);
-    return mat3x3(x, y, z);
-}
-
-fn diag_mat(v: vec3<f32>) -> mat3x3<f32> {
-    return mat3x3(
-        vec3(v.x, 0.0, 0.0),
-        vec3(0.0, v.y, 0.0),
-        vec3(0.0, 0.0, v.z),
-    );
-}
-
-fn negate_mat(m: mat3x3<f32>) -> mat3x3<f32> {
-    return mat3x3(-m[0], -m[1], -m[2]);
 }
