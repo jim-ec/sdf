@@ -15,6 +15,11 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
 }
 
+struct FragmentOutput {
+    @location(0) color: vec4<f32>,
+    @builtin(frag_depth) depth: f32,
+}
+
 @vertex
 fn vertex(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     // Compute the normalized quad coordinates based on the vertex index.
@@ -30,11 +35,14 @@ fn vertex(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 }
 
 @fragment
-fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    let focal_length = 2.0;
+fn fragment(in: VertexOutput) -> FragmentOutput {
+    let focal_length = 2.4142 * 0.5;
     let pixel = vec2(uniforms.viewport_aspect_ratio, 1.0) * in.uv;
     let direction = quat_transform(uniforms.rotation, normalize(vec3(pixel, focal_length)));
     var point = quat_transform(uniforms.rotation, uniforms.eye);
+    let p0 = point;
+
+    var out: FragmentOutput;
 
     var i = 0u;
     loop {
@@ -52,11 +60,16 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     let n = sdf_normal(point);
+    let linear_depth = distance(point, p0);
+    let depth = linear_depth_to_ndc(linear_depth, 0.1, 100.0);
+    // let color = vec3(depth);
     let color = vec3(0.9) * dot(direction, -n) + 0.1;
     // let color = vec3(f32(i)) / f32(uniforms.max_iterations);
     // return vec4(color, 1.0);
     // return vec4(0.5 * n + 0.5, 1.0);
-    return vec4(linear_to_gamma_rgb(color), 1.0);
+    out.depth = depth;
+    out.color = vec4(linear_to_gamma_rgb(color), 1.0);
+    return out;
 }
 
 fn linear_to_gamma_rgb(color: vec3<f32>) -> vec3<f32> {
@@ -64,9 +77,12 @@ fn linear_to_gamma_rgb(color: vec3<f32>) -> vec3<f32> {
 }
 
 fn sdf(point: vec3<f32>) -> f32 {
-    let d_c = sdf_cuboid(modulo(point, vec3(2.0, 0.0, 2.0)), vec3(0.0), vec3(0.5));
-    let d_s = sdf_sphere(point, vec3(0.0, 0.0, 0.0), 4.0 * abs(sin(0.5 * uniforms.time)));
-    return sdf_smooth_min(d_c, d_s, 1.0);
+    // let d_c = sdf_cuboid(modulo(point, vec3(2.0, 0.0, 2.0)), vec3(0.0), vec3(0.5));
+    // let d_s = sdf_sphere(point, vec3(0.0, 0.0, 0.0), 4.0 * abs(sin(0.5 * uniforms.time)));
+    // return sdf_smooth_min(d_c, d_s, 1.0);
+
+    return sdf_sphere(point, vec3(0.0), 1.2);
+    // return sdf_cuboid(point, vec3(0.0), vec3(1.0));
 }
 
 fn sdf_sphere(point: vec3<f32>, center: vec3<f32>, radius: f32) -> f32 {
@@ -158,4 +174,12 @@ fn sq(x: f32) -> f32 {
 
 fn inf_norm(v: vec3<f32>) -> f32 {
     return max(max(v.x, v.y), v.z);
+}
+
+// TODO: This is still linear depth, does not match depth from perspective projection
+fn linear_depth_to_ndc(depth: f32, near: f32, far: f32) -> f32 {
+    // return (depth - near) / (far - near); // normalize for 0..1
+    let z_ndc = (far + near - (2.0 * near * far) / depth) / (far - near);
+    // return (z_ndc + 1.0) * 0.5;
+    return z_ndc;
 }
